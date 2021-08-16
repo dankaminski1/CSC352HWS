@@ -1,0 +1,77 @@
+-- Q1
+
+ create trigger Dept_Del
+ after delete on Departments
+ Begin
+ Insert into dept_del_log values(sysdate,USER,'Delete');
+ end;
+ /
+
+-- Q2
+
+  CREATE OR REPLACE TRIGGER DEPT_DEL_ROW
+  after delete on Departments
+  for each row
+  Begin
+  Insert into dept_access_log values(:OLD.department_id,:OLD.department_name,:NEW.department_name,:OLD.manager_id,:NEW.manager_id, :OLD.location_id, :NEW.location_id,SYSDATE, USER, 'Delete');
+  END;
+  /
+
+-- Q3
+
+CREATE OR REPLACE TRIGGER Change_DEPT
+  after insert or update or delete of
+  manager_id, location_id 
+  on Departments
+  for each row
+  Begin
+  Insert into dept_access_log values(:OLD.department_id,:OLD.department_name,:NEW.department_name,:OLD.manager_id,:NEW.manager_id, :OLD.location_id, :NEW.location_id,SYSDATE, USER, 'Delete');
+  END;
+  /
+
+-- Q4
+
+CREATE OR REPLACE PACKAGE Pkg_Dept_Emp_Info AUTHID DEFINER AS
+FUNCTION Dept_emp_num (deptid employees.department_id%TYPE) RETURN INTEGER;
+FUNCTION Dept_emp_num (deptnm departments.department_name%TYPE) RETURN INTEGER;
+END Pkg_Dept_Emp_Info;
+/
+
+CREATE OR REPLACE PACKAGE BODY Pkg_Dept_Emp_Info AS
+FUNCTION Dept_emp_num 
+     ( deptid employees.department_id%TYPE)
+       RETURN integer
+      IS
+       ret    integer;	
+  BEGIN
+    SELECT count (*) into ret
+    FROM  employees
+    WHERE department_id = deptid ;
+    
+    RETURN ret;
+  END Dept_emp_num ;
+  
+FUNCTION Dept_emp_num 
+    (deptnm departments.department_name%TYPE)
+	RETURN integer
+    IS
+	ret    integer; 	
+  BEGIN
+    SELECT count (*) into ret
+    FROM   employees
+	WHERE department_id =  
+          (select department_id from departments 
+             where department_name =  deptnm);
+    RETURN ret ;
+  END Dept_emp_num ;
+END Pkg_Dept_Emp_Info;
+/
+DECLARE
+  danvar  integer;
+  danvar2  integer;
+BEGIN
+  danvar := Pkg_Dept_Emp_Info.Dept_emp_num(60);
+  DBMS_OUTPUT.PUT_LINE( 'The total number of employees in department 60: '|| TO_CHAR(danvar));
+  danvar2 := Pkg_Dept_Emp_Info.Dept_emp_num('IT');
+  DBMS_OUTPUT.PUT_LINE( 'The total number of employees in IT: ' ||  TO_CHAR(danvar2));
+END;

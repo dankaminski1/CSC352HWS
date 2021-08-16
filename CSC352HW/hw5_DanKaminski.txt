@@ -1,0 +1,147 @@
+--Q1 
+
+DECLARE
+    TYPE tab_column IS RECORD (   
+        col_name    VARCHAR2(30),
+        dan_data_type   VARCHAR2(30),
+        data_len    VARCHAR2(30)
+    );
+    
+    CURSOR c IS
+        SELECT column_name, data_type, data_length
+        FROM user_tab_columns
+        WHERE upper (table_name) =   'EMPLOYEES';
+    v1  tab_column;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE ('For table Employees ');
+    DBMS_OUTPUT.PUT_LINE ('Column name          Data type   Data length');
+    DBMS_OUTPUT.PUT_LINE ('-----------------    -----------  ------------');
+    OPEN c;
+    LOOP
+    FETCH c into v1;
+    EXIT when c%NOTFOUND;
+    DBMS_OUTPUT.PUT_LINE(RPAD(v1.col_name, 20)|| ' ' || RPAD( v1.dan_data_type, 20)|| ' ' || v1.data_len);
+    END LOOP;
+    close c;
+END;
+
+
+-- Q2
+
+DECLARE
+    TYPE Emp_Sal is RECORD (
+        empno       employees.employee_id%TYPE,
+        lastname    employees.last_name%TYPE,
+        sal         employees.salary%TYPE
+    );
+    
+    v1  Emp_Sal;
+    
+BEGIN
+    SELECT  employee_id, last_name, salary
+    INTO v1
+    from employees
+    where employee_id = 103;
+    DBMS_OUTPUT.PUT_LINE(TO_CHAR(v1.empno) || '  ' || v1.lastname || ' ' || to_char(v1.sal, '$99,999'));
+END;
+    
+--Q3
+
+DECLARE
+    TYPE Emp_Sal is RECORD (
+        empno       employees.employee_id%TYPE,
+        lastname    employees.last_name%TYPE,
+        sal         employees.salary%TYPE
+    );
+    
+    v1  Emp_Sal;
+    
+    TYPE Emp_Sal_NT IS table of Emp_Sal;
+    List Emp_Sal_NT := Emp_Sal_NT();
+    
+    i integer := 1;
+    Cursor c IS
+        SELECT employee_id, last_name, salary
+        FROM EMPLOYEES
+        where department_id = 60;
+BEGIN 
+    LIST.extend (50);
+    DBMS_OUTPUT.PUT_LINE ( 'Emp ID   Last Name     Salary' );    
+    DBMS_OUTPUT.PUT_LINE ( '-------  ----------    -------' );
+    For indx in c loop
+    LIST(i).empno     := indx.employee_id;      
+    LIST(i).lastname  := indx.last_name;      
+    LIST(i).sal := indx.salary;
+    DBMS_OUTPUT.PUT_LINE ( RPAD (LIST(i).empno, 9) || RPAD (LIST(i).lastname, 14) ||  LIST(i).sal );
+    i := i + 1;
+    End loop;
+END;
+
+-- Q4
+
+DECLARE
+    dep_num NUMBER := 100;
+    v1 varchar2(46);
+    v2 departments.department_name%TYPE;
+
+PROCEDURE dept_info
+(
+    in_department_id    IN        NUMBER,
+    out_full_name       OUT       VARCHAR2,
+    out_department_name OUT       VARCHAR2
+)
+IS
+BEGIN
+    SELECT last_name || ' ' || first_name, department_name
+    INTO out_full_name, out_department_name
+    FROM employees e, departments d
+    WHERE e.department_id = d.department_id and 
+    e.employee_id = d.manager_id and e.department_id = 100;
+
+    
+END dept_info;
+BEGIN
+dept_info (dep_num, v1, v2);
+DBMS_OUTPUT.put_line(v1 || ' ' || v2);
+END;
+
+-- Q5
+
+Create or replace   procedure dept_info 
+   ( deptno     IN   employees.department_id%TYPE,
+     deptname   OUT  departments.department_name%TYPE,
+     fullname   OUT  varchar2 
+    )  IS	
+    BEGIN
+	SELECT  First_name || ' '|| last_name 
+	INTO    fullname
+	FROM    employees 
+	WHERE   employee_id = (select manager_id from departments
+                    where department_id = deptno );
+        
+        SELECT  department_name 
+	INTO    deptname
+	FROM    departments 
+	WHERE   department_id = deptno ;
+END dept_info;
+/
+
+Declare
+   dept_id    employees.department_id%TYPE := 100;
+   dname      varchar2 (30);
+   mgrname    varchar2 (46);
+   Cursor  c IS select distinct department_ID from employees where salary < 3000;
+
+BEGIN
+
+     DBMS_OUTPUT.PUT_LINE( 'Dept ID     Dept Name           Manager Name    ');
+     DBMS_OUTPUT.PUT_LINE( '--------   -----------------   ---------------- ');
+         
+     FOR indx in c loop    
+        dept_info ( indx.department_id, dname, mgrname ); 
+        DBMS_OUTPUT.PUT_LINE
+        (RPAD (indx.department_id, 11)|| RPAD (dname, 20)|| mgrname);
+     END LOOP;
+END;
+
+    

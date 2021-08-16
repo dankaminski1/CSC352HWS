@@ -1,0 +1,81 @@
+-- Q1
+- True
+- True
+- False
+- True
+- True
+- True
+- True
+- True
+- False
+- True
+
+-- Q2
+- The option I chose to be not true is:
+In the PL/SQL program, if an exception occurs in execution section in the inner block, 
+and it is not handled by the Exception section in the inner block, 
+then this exception will propagate to the exception section in its outer (enclosing) block. 
+
+-- Q3
+DECLARE
+   dan_num number := 1;
+   dan_limit EXCEPTION;
+BEGIN
+   LOOP
+       dbms_output.put_line(dan_num);
+       dan_num := dan_num + 1;
+       IF dan_num > 5 THEN
+           RAISE dan_limit;
+       END IF;
+   END LOOP;
+EXCEPTION
+   WHEN dan_limit THEN
+       dbms_output.put_line('Error!!! Counter reached Limit...!');
+   WHEN others THEN
+       dbms_output.put_line('Error!');
+END;
+
+-- Q4
+DECLARE
+DAN_EMP_ID int;
+DAN_NAME varchar(30);
+DAN_SALARY int;
+CURSOR Dan_Cursor IS Select Employee_ID,First_Name,Salary from Employees where JOB_ID='SH_CLERK' and Salary>2500;
+BEGIN
+OPEN Dan_Cursor;
+LOOP
+FETCH Dan_Cursor INTO DAN_EMP_ID,DAN_NAME,DAN_SALARY;
+EXIT WHEN Dan_Cursor%notfound;
+dbms_output.put_line(rpad(DAN_EMP_ID,25,' ')|| rpad(DAN_NAME,25,' ') || rpad(DAN_SALARY,25,' '));
+END LOOP;
+CLOSE Dan_Cursor;
+END;
+
+-- Q5
+DROP TABLE log_error;
+CREATE TABLE log_error (
+  Occur_date  DATE default SYSDATE,
+  Username    VARCHAR2 (15) default USER,
+  Err_code    number,
+  Err_msg     VARCHAR2 (255));
+DECLARE
+Err_code    NUMBER;
+Err_msg     VARCHAR2(255);
+
+BEGIN
+delete employees where employee_id = 104 ;
+DBMS_OUTPUT.PUT_LINE ('The employee 104 is deleted. ');
+ROLLBACK;
+
+delete employees where employee_id = 123 ;
+DBMS_OUTPUT.PUT_LINE ('The employee 123 is deleted. ');
+ROLLBACK;
+
+DBMS_OUTPUT.PUT_LINE ('The program runs to the normal end.');
+  
+Exception
+WHEN OTHERS THEN
+Err_code := SQLCODE;
+Err_msg := SQLERRM;
+DBMS_OUTPUT.PUT_LINE ('This Exception Error Code =' || TO_CHAR(Err_code) || '; Error Message":' || Err_msg);
+END;

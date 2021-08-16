@@ -1,0 +1,94 @@
+--Q1
+COLUMN Emp_name format A30 
+COLUMN SALARY format $99,990
+SELECT last_name || ', ' || first_name AS Emp_name, SALARY
+FROM EMPLOYEES, DEPARTMENTS
+WHERE DEPARTMENTS.DEPARTMENT_ID = 60;
+
+--Q2
+COLUMN Emp_name format A30 
+COLUMN SALARY format $99,999
+SELECT last_name || ', ' || first_name AS Emp_name, SALARY, DEPARTMENT_NAME
+FROM EMPLOYEES, DEPARTMENTS
+WHERE DEPARTMENTS.DEPARTMENT_ID = 60 and SALARY < 8000;
+
+--Q3
+SELECT employees.DEPARTMENT_ID, department_name, COUNT(*)
+FROM EMPLOYEES
+INNER JOIN departments  ON departments.department_id = employees.department_id
+GROUP BY DEPARTMENT_NAME, employees.DEPARTMENT_ID
+ORDER BY COUNT(*) ASC;
+
+--Q4
+SELECT employees.last_name || ', ' || employees.first_name AS employee, manager.first_name || ' ' || manager.last_name AS manager
+FROM employees 
+INNER JOIN employees manager ON manager.employee_id = employees.manager_id
+WHERE EMPLOYEES.DEPARTMENT_ID IS NULL;
+
+--Q5
+SELECT employees.department_id, department_name, MAX( (salary + salary * NVL (commission_PCT, 0))), MIN(salary)
+FROM employees 
+INNER JOIN departments  ON departments.department_id = employees.department_id
+GROUP BY employees.department_id, department_name;
+
+--Q6
+SELECT employee_id, last_name, first_name, department_id
+FROM employees
+WHERE last_name in
+(SELECT last_name from employees
+group by last_name
+having count(last_name) >1);
+
+--Q7 not entirely correct, fix
+SELECT A.LAST_NAME, A.FIRST_NAME, B.LAST_NAME, A.manager_id, A.department_id, C.manager_id
+FROM EMPLOYEES A, EMPLOYEES B, DEPARTMENTS C
+WHERE A.MANAGER_ID = B.EMPLOYEE_ID
+AND A.MANAGER_ID = C.MANAGER_ID
+AND A.department_id in (10, 20, 30, 40, 60)
+
+--Q8 
+select employee_id, last_name, first_name
+from employees
+where employee_id in
+(
+select distinct department_id
+from departments
+minus
+select distinct manager_id
+from employees where manager_id is not null
+);
+
+
+--Q9
+DECLARE
+    emp_name    employees.last_name%TYPE;
+    income  employees.salary%TYPE;
+BEGIN
+    emp_name := 'King';
+    income := 12345;
+    DBMS_OUTPUT.PUT_LINE('emp_name = ' || emp_name);
+    DBMS_OUTPUT.PUT_LINE('salary = ' || TO_CHAR(income, '99G999D99MI'));
+END;
+
+--Q10
+<<outer>>
+DECLARE
+    emp_name    employees.last_name%TYPE;
+    income  employees.salary%TYPE;
+BEGIN
+    emp_name := 'King';
+    income := 8000;
+    DBMS_OUTPUT.PUT_LINE('emp_name = ' || emp_name);
+    DBMS_OUTPUT.PUT_LINE('salary = ' || TO_CHAR(income, '99G999D99MI'));
+      DECLARE
+        emp_name    employees.last_name%TYPE;
+        income  employees.salary%TYPE;
+    BEGIN
+        emp_name := 'Bell';
+        income := 4000;
+        DBMS_OUTPUT.PUT_LINE('emp_name = ' || emp_name);
+        DBMS_OUTPUT.PUT_LINE('salary = ' || TO_CHAR(income, '99G999D99MI'));
+        DBMS_OUTPUT.PUT_LINE('emp_name = ' || outer.emp_name);
+        DBMS_OUTPUT.PUT_LINE('salary = ' || TO_CHAR(outer.income, '99G999D99MI'));
+    END;
+END outer;

@@ -1,0 +1,311 @@
+-- Q1. 
+set serveroutput on
+DECLARE
+    CURSOR c_emp  IS
+     	SELECT   last_name ||', ' || first_name Full_name,  salary
+    	FROM     employees 
+        WHERE	 department_id in (10, 20)  
+    	ORDER BY salary DESC;
+BEGIN
+
+   DBMS_OUTPUT.put_line  (' No      Emp Full Name             Salary ');    
+   DBMS_OUTPUT.put_line  ('---   ---------------------      --------');
+    FOR indx in c_emp LOOP
+        DBMS_OUTPUT.put_line ( rpad (c_emp%ROWCOUNT, 7) ||
+          RPAD (indx.full_name, 25) || to_char (indx.salary, '$999,999') );
+    END LOOP;
+END;
+
+
+-- ALT REM Q1 implicit cursor 
+Declare 
+    counter integer := 1;
+BEGIN
+    
+    DBMS_OUTPUT.put_line  (' No      Emp Full Name             Salary ');    
+    DBMS_OUTPUT.put_line  ('---   ---------------------      --------');
+    FOR indx in ( 
+       	SELECT   last_name ||', ' || first_name Full_name,  salary
+    	FROM     employees 
+        WHERE	 department_id in (10, 20)  
+    	ORDER BY salary DESC ) 
+     LOOP
+        DBMS_OUTPUT.put_line 
+         (rpad ( counter, 7) ||
+          RPAD (indx.full_name, 25) || to_char (indx.salary, '$99,999') );
+     counter := counter +1;
+    END LOOP;
+END;
+
+
+-- Q2.
+DECLARE
+	Cursor c IS
+	SELECT 	employee_id, salary, NVL (commission_pct, 0) comm_rate
+	FROM 	employees 
+    Where   department_ID = 80; 
+	
+	eid	employees.employee_id%TYPE ;
+	Sal 	employees.salary%TYPE ;	
+	comm    employees.commission_pct%TYPE ;
+	bonus 	number := 0;
+    Total   number := 0;
+BEGIN
+    --  For in case to debug
+    --  DBMS_OUTPUT.PUT_LINE ( 'ID      Salary    Comm rate   Bonus');
+    --  DBMS_OUTPUT.PUT_LINE ( '-----  ---------  ---------   -------');   
+    OPEN c ;
+    Loop
+	Fetch c into eid, sal, comm; 
+	EXIT when c%NOTFOUND;	
+
+	IF comm >= .25 THEN			-- Nested IF THEN
+	   IF sal >= 10000   THEN  	bonus := 1000;
+	   ELSIF sal >= 7000 THEN	bonus := 800;
+	   ELSE		 	  	bonus := 600;
+	   END IF; 			-- end of nested IF
+
+	ELSIF (comm < .25 and comm >=.15) THEN   -- Nested IF THEN
+	   IF sal >= 10000   THEN 	bonus := 700;
+	   ELSIF sal >= 7000 THEN	bonus := 600;
+	   ELSE				bonus := 500;
+	   END IF; 
+       ELSE
+           bonus := 450;
+       END IF;
+        -- The statement below is for in case to debug, that will output each row result.
+	/*   DBMS_OUTPUT.PUT_LINE ( eid || '   ' || To_char (sal, '$999,999')  || 
+            LPAD( comm, 12) || To_char (bonus, '$999,999' ));
+	*/
+	Total  := total + bonus ;
+	Bonus := 0;
+   END LOOP;
+   CLOSE c;
+   DBMS_OUTPUT.PUT_LINE (' -- OUT of LOOP -- ' );
+   DBMS_OUTPUT.PUT_LINE ('  ');
+   DBMS_OUTPUT.PUT_LINE ('Total bonus: ' || TO_CHAR (total, '$99,999') ||'.' );
+END;
+
+
+-- Q2. using CASE instead of "IF"
+
+DECLARE
+	Cursor c IS
+	SELECT 	employee_id, salary, NVL (commission_pct, 0) comm_rate
+	FROM 	employees 
+    Where   department_ID = 80; 
+	
+	eid	employees.employee_id%TYPE ;
+	Sal 	employees.salary%TYPE ;	
+	comm    employees.commission_pct%TYPE ;
+	bonus 	number := 0;
+    Total   number := 0;
+BEGIN
+    --  For in case to debug
+    --  DBMS_OUTPUT.PUT_LINE ( 'ID      Salary    Comm rate   Bonus');
+    --  DBMS_OUTPUT.PUT_LINE ( '-----  ---------  ---------   -------');   
+    OPEN c ;
+    Loop
+	Fetch c into eid, sal, comm; 
+	EXIT when c%NOTFOUND;	
+
+	CASE 
+        WHEN comm >= .25 THEN	
+	   Case                     
+           when sal >= 10000   THEN  	bonus := 1000;
+	   When sal >= 7000    THEN	bonus := 800;
+	   ELSE		 	  	bonus := 600;
+	   END case; 			-- end of case
+
+	WHEN (comm < .25 and comm >=.15) THEN   
+	   CASE
+           When sal >= 10000   THEN 	bonus := 700;
+	   WHEN sal >= 7000    THEN	bonus := 600;
+	   ELSE				bonus := 500;
+	   END CASE; 
+       ELSE
+           bonus := 450;
+       END CASE;
+        -- The statement below is for in case to debug, that will output each row result.
+	/*   DBMS_OUTPUT.PUT_LINE ( eid || '   ' || To_char (sal, '$999,999')  || 
+            LPAD( comm, 12) || To_char (bonus, '$999,999' ));
+	*/
+	Total  := total + bonus ;
+	Bonus := 0;
+   END LOOP;
+   CLOSE c;
+   DBMS_OUTPUT.PUT_LINE (' -- OUT of LOOP -- ' );
+   DBMS_OUTPUT.PUT_LINE ('  ');
+   DBMS_OUTPUT.PUT_LINE ('Total bonus: ' || TO_CHAR (total, '$99,999') ||'.' );
+END;
+
+-- Q3A.  Curosr for loop
+DECLARE
+    Cursor c ( owner_in IN varchar2, table_in IN varchar2) IS
+       select column_name, data_type, data_length 
+       from all_tab_columns
+       where owner = owner_in and table_name = table_in;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE ('For table Employees ');
+    DBMS_OUTPUT.PUT_LINE ('No     Column name          Data type   Data length');
+    DBMS_OUTPUT.PUT_LINE ('---   -----------------    -----------  ------------');
+   
+    FOR indx in c (USER, 'EMPLOYEES')
+    Loop
+	    DBMS_OUTPUT.PUT_LINE ( Rpad (c%rowcount, 6) || rpad  (indx.column_name, 22) || 
+         rpad (indx.data_type, 20)  || indx.data_length ); 
+    END LOOP;
+   
+   DBMS_OUTPUT.PUT_LINE (' ' );
+   DBMS_OUTPUT.PUT_LINE ('For table DEPARTMENTS ');
+   DBMS_OUTPUT.PUT_LINE ('No     Column name          Data type   Data length');
+    DBMS_OUTPUT.PUT_LINE ('---   -----------------    -----------  ------------');
+   
+   FOR indx in c (USER, 'DEPARTMENTS')
+    Loop
+	    DBMS_OUTPUT.PUT_LINE ( Rpad (c%rowcount, 6) || rpad  (indx.column_name, 22) || 
+         rpad (indx.data_type, 20)  || indx.data_length ); 
+    END LOOP;
+END;
+
+
+-- Q3B, basic loop
+
+DECLARE
+    Cursor c ( owner_in IN varchar2, table_in IN varchar2)
+        IS
+     select column_name, data_type, data_length 
+                                      -- (, data_precision, data_scale)
+     from all_tab_columns
+     where owner = owner_in and table_name = table_in;
+	
+     v_c  c%rowtype;
+     cn integer := 1;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE ('For table Employees ');
+    DBMS_OUTPUT.PUT_LINE ('No     Column name          Data type   Data length');
+    DBMS_OUTPUT.PUT_LINE ('---   -----------------    -----------  ------------');
+   
+    OPEN c (USER, 'EMPLOYEES') ;
+    Loop
+	Fetch c  into v_c; 
+	EXIT when c%NOTFOUND;	
+        DBMS_OUTPUT.PUT_LINE ( Rpad (cn, 6) || rpad  (v_c.column_name, 22) || 
+         rpad (v_c.data_type, 20)  || v_c.data_length ); 
+	 cn := cn +1 ;
+   END LOOP;
+   CLOSE c;
+   
+   DBMS_OUTPUT.PUT_LINE (' ' );
+   DBMS_OUTPUT.PUT_LINE ('For table DEPARTMENTS ');
+   DBMS_OUTPUT.PUT_LINE ('No     Column name          Data type   Data length');
+    DBMS_OUTPUT.PUT_LINE ('---   -----------------    -----------  ------------');
+   
+   OPEN c (USER, 'DEPARTMENTS') ; 
+    Loop            -- this time, using %rowcount, instead of counter cn), same output
+	Fetch c  into v_c; 
+	EXIT when c%NOTFOUND;	
+        DBMS_OUTPUT.PUT_LINE ( RPad (c%ROWCOUNT, 6) || rpad  (v_c.column_name, 22) || 
+         rpad (v_c.data_type, 20)  || v_c.data_length );    END LOOP;
+   CLOSE c;
+END;
+
+
+--REM Q4. 
+DECLARE
+    CURSOR c  IS
+     	SELECT  employee_id, Last_name, salary
+	FROM 	employees 
+	WHERE 	NVL (commission_pct, 0) = 0 and salary < 2399
+        FOR UPDATE;
+			
+    empid     employees.employee_id%TYPE;
+    lname     employees.last_name%TYPE;
+    old_sal   employees.salary%TYPE;
+    new_sal   employees.salary%TYPE;
+BEGIN
+    DBMS_OUTPUT.put_line ('emp id  last name   old salary  new salary ');
+    DBMS_OUTPUT.put_line ('------  ----------  ----------- ---------- ');
+    OPEN c;
+    LOOP
+     	FETCH c INTO empid, lname, old_sal;
+	EXIT WHEN c%NOTFOUND;
+	new_sal := old_sal * 1.07;
+	UPDATE employees 
+	  SET salary = new_sal 
+	  WHERE current of c; 
+        DBMS_OUTPUT.put_line ( empid ||'     '|| RPAD (lname, 12) ||
+             TO_CHAR (old_sal, '$9,999.99') ||' ' ||TO_CHAR (new_sal, '$9,999.99'));
+    END LOOP;
+    CLOSE c;
+    rollback;
+END;
+
+-- Q4 using cursor for loop
+DECLARE
+    CURSOR c  IS
+     	SELECT  employee_id, Last_name, salary
+	FROM 	employees 
+	WHERE 	NVL (commission_pct, 0) = 0 and salary < 2399
+        FOR UPDATE;
+   new_sal   employees.salary%TYPE;			
+BEGIN
+    DBMS_OUTPUT.put_line ('emp id  last name   old salary  new salary ');
+    DBMS_OUTPUT.put_line ('------  ----------  ----------- ---------- ');
+    
+    For indx in c LOOP
+        new_sal := indx.salary * 1.07 ;
+     	UPDATE employees 
+	  SET salary = new_sal 
+	  WHERE current of c; 
+        DBMS_OUTPUT.put_line ( indx.employee_id ||'     '|| RPAD (indx.last_name, 12) ||
+             TO_CHAR (indx.salary, '$9,999.99') ||' ' ||TO_CHAR (new_sal, '$9,999.99'));
+    END LOOP;
+    Rollback;
+END;
+
+
+-- Q5. Cursor variable
+
+DECLARE
+   TYPE empcurtyp IS REF CURSOR RETURN employees%ROWTYPE; -- strong type
+   cv_emp 	empcurtyp;
+   v_emp 	employees%ROWTYPE; 		-- record variable 
+
+BEGIN
+    OPEN cv_emp FOR 
+	SELECT * FROM employees
+	WHERE department_id  = 60
+	ORDER BY last_name;
+    DBMS_OUTPUT.PUT_LINE( 'For Department 60  ');
+   
+   DBMS_OUTPUT.PUT_LINE( 'Emp ID      Full Name    ');
+   DBMS_OUTPUT.PUT_LINE( '--------  ------------------- ' );
+   LOOP 						
+	FETCH cv_emp INTO v_emp;
+	EXIT WHEN cv_emp%NOTFOUND;
+	DBMS_OUTPUT.PUT_LINE( rpad (v_emp.employee_id, 11) || 
+         v_emp.last_name ||', ' || v_emp.first_name );
+   END LOOP;
+
+
+   DBMS_OUTPUT.PUT_LINE( '  ' );
+   DBMS_OUTPUT.PUT_LINE( 'Second time output  ' );
+   DBMS_OUTPUT.PUT_LINE( 'Emp ID    Depart ID  Last Name           Salary' );
+   DBMS_OUTPUT.PUT_LINE( '--------  ---------- ---------------  -----------' );
+   OPEN cv_emp FOR 
+	SELECT *  FROM employees
+	WHERE commission_pct is null and salary < 2399
+	ORDER BY employee_id ;
+
+   LOOP 						
+	FETCH cv_emp INTO v_emp;
+	EXIT WHEN cv_emp%NOTFOUND;
+	DBMS_OUTPUT.PUT_LINE( rpad (v_emp.employee_id, 11) || 
+           rpad (v_emp.department_id, 11) ||
+           rpad (v_emp.last_name, 18) ||
+         TO_CHAR (v_emp.salary, '$99,999') );
+   END LOOP;
+
+   CLOSE cv_emp;
+END;

@@ -1,0 +1,283 @@
+-- Q1a.
+
+Create or Replace Procedure Dept_Bonus ( Dept_ID number, Total_Bonus OUT Number )
+    IS
+    Cursor  c IS
+	SELECT 	salary, NVL (commission_pct, 0) comm_rate
+	FROM 	employees 
+        Where   department_ID = Dept_ID; 
+	
+	sal 	employees.salary%TYPE;	
+	comm    employees.commission_pct%TYPE;
+	bonus 	number := 0;
+BEGIN
+    Total_bonus := 0;        
+    OPEN c ;
+    Loop
+	Fetch c into sal, comm; 
+	EXIT when c%NOTFOUND;	
+
+	IF comm >= .25 THEN			-- Nested IF THEN
+	   IF sal >= 10000   THEN  	bonus := 1000;
+	   ELSIF sal >= 7000 THEN	bonus := 800;
+	   ELSE		 	  	bonus := 600;
+	   END IF; 			-- end of nested IF
+
+	ELSIF (comm < .25 and comm >=.15) THEN   -- Nested IF THEN
+	   IF sal >= 10000   THEN 	bonus := 700;
+	   ELSIF sal >= 7000 THEN	bonus := 600;
+	   ELSE				bonus := 500;
+	   END IF; 
+       ELSE
+           bonus := 450;
+       END IF;
+        
+       Total_Bonus  := Total_Bonus + bonus ;
+       Bonus := 0;
+   END LOOP;
+   CLOSE c;
+END Dept_Bonus ;
+/
+
+Declare
+   deptno     number (6) := 80;
+   Tot_bonus  number (8, 2) ;
+Begin
+   Dept_Bonus ( deptno, Tot_bonus );
+   DBMS_OUTPUT.PUT_LINE ('For department '|| deptno  || ', the total bonus will be  '|| 
+              To_char (Tot_bonus, '$999,999') );
+END;
+
+-- Q1b.
+
+Create or Replace Function F_Dept_Bonus ( Dept_ID number)
+  RETURN number
+    IS
+    Cursor  c IS
+        SELECT 	salary, NVL (commission_pct, 0) comm_rate
+        FROM 	employees 
+        Where   department_ID = Dept_ID; 
+	
+        bonus 	number := 0;
+        Total_Bonus  number (8,2) := 0;
+BEGIN
+    FOR Indx in c   Loop
+	 IF Indx.comm_rate >= .25   THEN			
+	   IF Indx.salary >= 10000   THEN  	bonus := 1000;
+	   ELSIF Indx.salary >= 7000 THEN	bonus := 800;
+	   ELSE		 	  	bonus := 600;
+	   END IF; 			-- end of nested IF
+
+	ELSIF (indx.comm_rate < .25 and indx.comm_rate >=.15) THEN   
+	   IF   Indx.salary >= 10000    THEN  	bonus := 700;
+       ELSIF Indx.salary >= 7000    THEN	bonus := 600;
+	   ELSE				        bonus := 500;
+	   END IF; 
+     ELSE
+           bonus := 450;
+     END IF;
+    Total_Bonus  := Total_Bonus + bonus ;
+	Bonus := 0;
+   END LOOP;
+   RETURN Total_Bonus ;
+END F_Dept_Bonus ;
+/
+
+Declare
+   deptno     number (6) := 80;
+   Tot_bonus  number (8, 2) ;
+Begin
+   Tot_Bonus := F_Dept_Bonus ( deptno );
+   DBMS_OUTPUT.PUT_LINE 
+   (' For department '|| deptno  || ', the total bonus will be  ' || 
+     To_char (Tot_bonus, '$999,999') );
+END;
+
+
+-- Q2.
+
+DECLARE
+
+    dept_id    employees.department_id%TYPE := 60;  
+    dept_name  departments.department_name%TYPE := 'IT';
+    num_emp    integer := 0 ; 	
+
+  FUNCTION Dept_emp_num 
+     ( deptid	employees.department_id%TYPE)
+       RETURN integer
+      IS
+       ret    integer; 	
+  BEGIN
+    SELECT count (*) into ret
+    FROM  employees
+    WHERE department_id = deptid ;
+    
+    RETURN ret;
+  END Dept_emp_num ;
+
+  FUNCTION Dept_emp_num 
+    (deptnm	departments.department_name%TYPE)
+	RETURN integer
+    IS
+	ret    integer; 	
+  BEGIN
+    SELECT count (*) into ret
+    FROM   employees
+	WHERE department_id =  
+          (select department_id from departments 
+             where department_name =  deptnm);
+    RETURN ret ;
+  END Dept_emp_num ;
+
+BEGIN
+     DBMS_OUTPUT.PUT_LINE ('Call function with ID as parameter:');
+     num_emp := Dept_emp_num (dept_id ) ;
+     DBMS_OUTPUT.PUT_LINE ('The total employee number in dept ID ' || 
+                dept_id || ' is: '|| num_emp ||'.');
+     DBMS_OUTPUT.PUT_LINE ('  ');
+     DBMS_OUTPUT.PUT_LINE ('Call function with dept name as parameter:');
+     num_emp := Dept_emp_num (dept_name) ;
+     DBMS_OUTPUT.PUT_LINE ('The total employee number in dept name ' || 
+                dept_name || ' is: '|| num_emp ||'.');
+               
+END;
+/
+
+-- Q3.
+
+Declare
+  TYPE Dept_info IS RECORD
+   ( dept_id   departments.department_id%TYPE,
+     dept_name departments.department_name%TYPE,
+     Fname     varchar2 (45),
+     Avg_sal   number   (8,2)); 
+   v1   Dept_info;
+  
+   Cursor c IS select department_ID 
+        from departments 
+        where manager_id is not null ; 
+
+   FUNCTION Get_DeptInfo 
+   ( in_id IN   employees.department_id%TYPE)
+        RETURN Dept_info
+        IS	
+     Ret_rec  Dept_info;
+   BEGIN
+	Ret_rec.dept_id := in_id;
+
+        SELECT  AVG (salary) 
+	INTO    Ret_rec.avg_sal
+	FROM    employees 
+	WHERE   department_id = in_id;
+       
+        SELECT  department_name, first_name ||' '|| last_name fname
+      	INTO    Ret_rec.dept_name, Ret_rec.fname
+        FROM    employees e, departments d 
+	WHERE   e.employee_id = d.manager_id and
+                d.department_id = in_id ;
+ 
+       /* or, with one Select stmt
+        SELECT  department_name, first_name ||' '|| last_name fname, AVG (salary) 
+        INTO    Ret_rec.dept_name, Ret_rec.fname, Ret_rec.avg_sal
+        FROM    employees e, departments d 
+	WHERE   e.employee_id = d.manager_id and  d.department_id = in_id 
+        group by department_name, first_name ||' '|| last_name; 
+       */ 
+       RETURN Ret_rec;
+    END;
+
+BEGIN
+     
+     DBMS_OUTPUT.PUT_LINE
+     ('Dept ID    Dept Name             Mgr full name      Average Salary'||CHR(10)||
+     '--------   ------------------  -------------------  --------------   ');
+
+     For indx in c loop
+       v1 := Get_DeptInfo ( indx.department_id); 
+         
+       DBMS_OUTPUT.PUT_LINE (RPAD (v1.dept_id, 12) ||  RPAD (v1.dept_name, 20)
+              || RPAD (v1.fname, 22) || TO_CHAR (v1.avg_sal, '$99,999') );
+     END LOOP;
+END;
+/
+
+-- Q4.
+
+DECLARE
+  TYPE name_rec IS RECORD (
+    f_name employees.first_name%TYPE,
+    l_name employees.last_name%TYPE 
+    );
+   name1 name_rec;
+   name2 name_rec;
+   name3 name_rec;
+
+ FUNCTION name_eq ( rec1 IN name_rec, rec2 IN name_rec)
+  RETURN boolean  
+     IS
+  ret_v boolean ; 
+  Begin 
+     IF (rec1.f_name = rec2.f_name and rec1.l_name = rec2.l_name ) THEN
+       ret_v := true;
+     else 
+       ret_v := false; 
+     END IF;
+     return ret_v;
+  END name_eq;
+
+ FUNCTION name_null( recx IN name_rec)
+  RETURN boolean  
+     IS
+  ret_n boolean ;
+  Begin 
+     IF (recx.f_name is null and recx.l_name is null) THEN
+       ret_n := true;
+     else 
+       ret_n := false; 
+     end if;
+     return ret_n ;
+  END name_null;
+  
+BEGIN
+  name1.f_name  := 'Jane'; 
+  name1.l_name  := 'Smith';
+  name2 := name1;        -- (composite) record level operation
+  
+  IF name_eq (name1, name2) THEN
+     DBMS_OUTPUT.PUT_LINE('The two records name1 '''|| name1.f_name || 
+     ' ' || name1.l_name ||''' and name2 '''|| name2.f_name || ' ' || 
+     name2.l_name || ''' are same.' );
+    ELSE
+       DBMS_OUTPUT.PUT_LINE('The two records name1 '''|| name1.f_name || 
+     ' ' || name1.l_name ||''' and name2 '''|| name2.f_name || ' ' || 
+     name2.l_name || ''' are NOT same.' );
+  END IF;
+
+  name2.l_name  := 'Thomas';
+
+  IF name_eq (name1, name2) THEN
+     DBMS_OUTPUT.PUT_LINE('The two records name1 '''|| name1.f_name || 
+     ' ' || name1.l_name ||''' and name2 '''|| name2.f_name || ' ' || 
+     name2.l_name || ''' are same.' );
+    ELSE
+       DBMS_OUTPUT.PUT_LINE('The two records name1 '''|| name1.f_name || 
+     ' ' || name1.l_name ||''' and name2 '''|| name2.f_name || ' ' || 
+     name2.l_name || ''' are NOT same.' );
+  END IF;
+
+  IF name_null (name3) THEN
+     DBMS_OUTPUT.PUT_LINE('The record name3 is null.' );
+  ELSE
+     DBMS_OUTPUT.PUT_LINE('The record name3 is not null.' );
+  END IF;
+
+
+  IF name_null (name1) THEN
+     DBMS_OUTPUT.PUT_LINE('The record name1 is null.' );
+  ELSE
+    DBMS_OUTPUT.PUT_LINE('The record name1 is NOT NUll, it has name  as '''|| 
+        name1.f_name || ' ' || name1.l_name || '''.' ); 
+   END IF;
+
+END;
+/

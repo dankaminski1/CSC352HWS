@@ -1,0 +1,252 @@
+Daniel Kaminski
+CSC352
+Midterm Exam
+
+Part I
+
+1. True
+2. True
+3. True
+4. True
+5. False
+6. False
+7. True
+8. True
+9. True
+10. True
+
+Part II
+
+1. D "Varrays are always dense, no deletion of internal elements is allowed."
+
+2. C "The system predefined exception has a name, thus the system will not raise the exception automatically."
+
+Part III
+
+1. Need to add "END IF;" before the "END loop".
+
+DECLARE
+   Maxno 	   number := 7;
+   counter   number := 2;
+   Exceed_Limit Exception;
+Begin
+    LOOP
+       DBMS_OUTPUT.PUT_LINE('counter is: ' ||counter || '.'); 
+       counter := counter + 2;
+       If counter > Maxno THEN 
+        	RAISE Exceed_Limit;
+		END IF;
+    END loop;
+  EXCEPTION
+     WHEN Exceed_Limit THEN 
+       DBMS_OUTPUT.PUT_LINE
+        ('Error, the counter now exceeds the limit of ' ||Maxno || '.'); 
+     WHEN OTHERS THEN
+         DBMS_OUTPUT.PUT_LINE('Trapped by OTHERS.');
+END;
+
+2. SH_CLEARK should be changed to SH_CLERK
+
+DECLARE
+   SAL_TOO_LOW     EXCEPTION;
+   MIN_SAL     NUMBER := 2599;
+   ID           NUMBER (6);
+   SAL          NUMBER (9,2);
+   CURSOR C IS 
+   SELECT  EMPLOYEE_ID , SALARY     FROM   EMPLOYEES
+    WHERE  JOB_ID = 'SH_CLERK'     ORDER BY 2 DESC;
+BEGIN
+   OPEN C;
+   LOOP
+      FETCH C INTO ID, SAL;
+      EXIT WHEN C%NOTFOUND;
+      IF sal < MIN_SAL THEN
+        RAISE SAL_TOO_LOW ;
+      END IF;
+   END LOOP;
+   EXCEPTION
+      WHEN SAL_TOO_LOW THEN 
+         DBMS_OUTPUT.PUT_LINE ( 'EMPLOYEE WITH ID OF ' || ID ||  
+           ' HAS CURRENT SALARY LOWER THAN LIMIT: '|| 
+           TO_CHAR (SAL, '$9,999'));
+      WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE ( 'PRINT OUT FROM EXCEPTION OF OTHERS.');
+    CLOSE C;
+END;
+
+Part IV
+
+1.
+
+DECLARE
+    CURSOR c  IS
+    SELECT  employee_id, Last_name, department_id, commission_pct, salary
+    FROM    employees 
+    WHERE   salary <= 6999 and department_ID = 80
+    order by 1
+    FOR UPDATE;
+    empid     employees.employee_id%TYPE;
+    lname     employees.last_name%TYPE;
+    deptid    employees.department_id%TYPE;
+    sal       employees.salary%TYPE;
+    c_pct       employees.commission_pct%TYPE;
+    new_c_pct   employees.commission_pct%TYPE;
+    
+BEGIN
+    DBMS_OUTPUT.put_line (' id    last name   salary  old comission   New comission');
+    DBMS_OUTPUT.put_line ('----  ----------  -------  -------------  -------------- ');
+    OPEN c;
+    LOOP
+     FETCH c INTO empid, lname, deptid, c_pct, sal;
+	 EXIT WHEN c%NOTFOUND;
+	 new_c_pct := c_pct * 1.1;
+	   UPDATE employees 
+		SET   commission_pct = new_c_pct 
+		WHERE current of c; 
+       
+	 DBMS_OUTPUT.put_line ( empid ||'    '|| RPAD (lname, 14) || 
+             TO_CHAR (sal, '$9,999') ||'    ' || RPAD (c_pct, 7) ||'    ' ||  RPAD (new_c_pct, 7) );
+    END LOOP;
+    CLOSE c;
+    rollback;
+END;
+
+2.
+
+DECLARE
+    Cursor c (deptno number )IS
+     SELECT 	first_name, last_name, EMPLOYEE_id, salary
+     FROM 	employees 
+     Where      department_ID = deptno; 
+	
+    eid	        employees.employee_id%TYPE ;
+    f_name      employees.first_name%TYPE ;
+    l_name      employees.last_name%TYPE ;
+    sal 	    employees.salary%TYPE ;	
+
+BEGIN
+    DBMS_OUTPUT.PUT_LINE ( 'ID   Full Name      Salary');
+    DBMS_OUTPUT.PUT_LINE ( '---  -------------  ----------- ');
+    OPEN c (60);
+    Loop	
+        Fetch c into f_name, l_name, eid, sal; 
+        EXIT when c%NOTFOUND;	
+    DBMS_OUTPUT.PUT_LINE ( eid ||'  '||  RPAD (l_name ||', '|| f_name, 14)|| TO_CHAR (sal, '$99,999'));
+   END LOOP;
+   CLOSE c;
+   open c(20);
+    Loop	
+        Fetch c into f_name, l_name, eid, sal; 
+        EXIT when c%NOTFOUND;
+      DBMS_OUTPUT.PUT_LINE ( eid ||'  '||  RPAD (l_name ||', '|| f_name, 14)|| TO_CHAR (sal, '$99,999'));
+      END LOOP;
+      CLOSE c;
+END;
+
+3.
+
+DECLARE
+   Sal_low 	EXCEPTION;
+   Min_Sal 	NUMBER := 2199;
+   counter         Integer := 0;
+   Err_code    number;
+   Err_msg varchar2 (255);
+   
+  Cursor c IS 
+   select employee_id , salary 
+    from   employees
+    order by 2 desc;
+BEGIN
+   DBMS_OUTPUT.put_line  ('Emp ID    Salary ');     
+   DBMS_OUTPUT.put_line  ('------   --------'); 
+   For indx in c LOOP
+       If indx.salary < Min_sal then
+         DBMS_OUTPUT.PUT_LINE ( indx.employee_id || 
+           '     '||  to_char (indx.salary, '$9,999'));
+         counter := counter +1 ;
+       END If;
+   END loop;
+
+    IF  counter != 0 THEN   
+      raise Sal_low ;
+    END IF;
+EXCEPTION
+   WHEN Sal_low THEN 	
+      DBMS_OUTPUT.PUT_LINE (CHR(10) ||'Print out from exception section.' );
+      DBMS_OUTPUT.PUT_LINE ('There are ' || counter  ||
+         ' employees, their salaries are lower than the limit.');
+   WHEN OTHERS THEN
+     Err_code := SQLCODE;
+     Err_msg := SQLERRM;
+     DBMS_OUTPUT.PUT_LINE ('This Exception Error Code =' || TO_CHAR(Err_code) || '; Error Message":' || Err_msg);
+END;
+
+4.
+
+DECLARE
+	TYPE ID_Name IS TABLE OF employees.first_name%TYPE 
+	INDEX BY Binary_integer;
+   	List 	 ID_Name;
+	i 	 Binary_integer; 
+           	
+        CURSOR c IS
+      	SELECT 	employee_id, first_name || ' ' || last_name AS full_name
+        FROM    employees
+        Where   department_id = 60;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE (' -- In order of populating - -   ');
+    DBMS_OUTPUT.PUT_LINE ('  ');
+    DBMS_OUTPUT.PUT_LINE (' ID     Full Name  ');
+    DBMS_OUTPUT.PUT_LINE ('------ ----------------');
+    FOR indx IN c LOOP
+       List (indx.employee_id) := indx.full_name;
+       DBMS_OUTPUT.PUT_LINE (RPAD (indx.employee_id, 6) ||'  ' ||
+ 			indx.full_name );    	
+    END LOOP;
+END;
+
+5.
+
+DECLARE
+    TYPE Email_list IS Table OF employees.email%TYPE ;
+    E_var Email_list := Email_list ();
+    counter  integer := 1;
+ 	
+    CURSOR c IS
+      	SELECT 	email
+        FROM    employees
+        Where   department_id = 30 or department_id = 60;
+BEGIN
+     FOR indx IN c LOOP
+       E_var.extend;
+       E_var (counter) := indx.email;
+    -- 2 
+       DBMS_OUTPUT.PUT_LINE (RPAD (counter, 4)|| E_var (counter));
+       counter := counter + 1 ;
+         END LOOP;
+    -- 3, 4
+    DBMS_OUTPUT.PUT_LINE('The current value limit of nested table is: ' || NVL (to_char(E_var.limit), 'NULL'));
+    DBMS_OUTPUT.PUT_LINE('The current last index value is: '|| E_var.last);
+    DBMS_OUTPUT.PUT_LINE('Currently the number of elements is: '|| E_var.count);
+    -- 5, 6    
+    E_var.extend;
+    E_var(counter)  := 'GWASHINGTON' ;
+    
+    DBMS_OUTPUT.PUT_LINE('After added one element, last index value is: '|| E_var.last);
+    -- 7, 8 , 9 
+    E_var.delete (2, 3) ;
+    DBMS_OUTPUT.PUT_LINE ( ' ');
+    DBMS_OUTPUT.PUT_LINE ('After deleting elements 2 and 3: ' );
+    DBMS_OUTPUT.PUT_LINE('The current size: '|| E_var.count );
+    DBMS_OUTPUT.PUT_LINE('The current last index value is: '|| E_var.last);
+    
+    -- 10
+    DBMS_OUTPUT.PUT_LINE ( ' ');
+    DBMS_OUTPUT.PUT_LINE ('After the deletion:' );
+    
+    counter := E_var.first ;
+    While counter is not null loop
+      DBMS_OUTPUT.PUT_LINE (RPAD (counter, 4)|| E_var (counter));
+      counter := E_var.next (counter) ;
+    END loop;
+End;

@@ -1,0 +1,348 @@
+Part I:
+
+1) F
+2) F
+3) T
+4) T
+5) T
+6) T
+
+Part II:
+
+1) D "In the package body, the executable section is optional."
+2) C "In the dynamic SQL, the placeholders must be declared in the declaration section,"
+3) D "In current version, program can use record level operator, to compare two record variables of same type to check if they are equal."
+4) D "Record"
+
+
+Part III:
+
+The error in this code is that Declare is put before the cursor which is an error and should not be put there.
+The simple fix is to just remove the Declare. Also needed to add Total_Bonus equal to 0 in the Begin section in order
+for a number to be printed in the output.
+
+Create or Replace Procedure Bonus 
+  ( Dept_ID number, Total_Bonus OUT Number )
+    IS
+    Cursor  c IS
+	 SELECT  salary, NVL (commission_pct, 0) comm_rate
+	 FROM    employees 
+  Where   department_ID = Dept_ID; 
+	sal 	  number (8,2);	
+	comm    number (2, 2); 
+	bonus   number := 0;
+BEGIN
+    Total_Bonus  := 0;
+    OPEN c ;
+    Loop
+	Fetch c into sal, comm; 
+	EXIT when c%NOTFOUND;	
+
+	IF comm >= .25 THEN	
+	   IF sal >= 10000   THEN  	bonus := 1000;
+	   ELSE		 	  	bonus := 800;
+	   END IF; 			
+
+	ELSIF (comm < .25 ) THEN   
+	   IF sal >= 10000   THEN 	bonus := 700;
+	   ELSE				bonus := 600;
+	   END IF; 
+ ELSE
+     bonus := 300;
+ END IF;
+     Total_Bonus  := Total_Bonus + bonus ;
+     Bonus := 0;
+ END LOOP;
+ CLOSE c;
+END Bonus ;
+/
+
+Declare
+   deptno     number (6) := 80;
+   Tot_bonus  number (8, 2) ;
+Begin
+   Bonus ( deptno, Tot_bonus );
+   DBMS_OUTPUT.PUT_LINE ('For department '|| deptno  || 
+     ', the total bonus will be  '|| To_char (Tot_bonus, '$999,999'));
+END;
+
+Part IV:
+
+Q1)
+
+DECLARE
+    TYPE My_Objects IS RECORD	
+    ( Obj_name	 VARCHAR2(30),
+      Obj_type	 VARCHAR2(30),
+      Date_Crt	 Date);
+      
+    v   My_Objects;
+   
+    Cursor c 
+        IS
+      select object_name, object_type, created 
+      from   user_objects
+      WHERE object_type in ('PROCEDURE', 'FUNCTION', 'TRIGGER', 'PACKAGE', 'PACKAGE BODY');
+
+
+BEGIN
+    DBMS_OUTPUT.PUT_LINE ('For User_objects ');
+    DBMS_OUTPUT.PUT_LINE ('Object Name           Object Type    Date Created');
+    DBMS_OUTPUT.PUT_LINE ('----------------      -----------    -------------');
+    
+    Open c ;
+    LOOP
+      Fetch c into v ;
+      Exit when c%NOTFOUND ;    
+      DBMS_OUTPUT.PUT_LINE ( Rpad (v.Obj_name, 22) || rpad  (v.Obj_type, 15) || 
+         rpad (v.Date_Crt, 20)); 
+    END LOOP;
+    close c ;
+END;
+/
+
+OUTPUT:
+
+For User_objects 
+Object Name           Object Type    Date Created
+----------------      -----------    -------------
+ADD_JOB_HISTORY       PROCEDURE      05-JAN-21           
+BONUS                 PROCEDURE      17-MAR-21           
+DEPT_BONUS            PROCEDURE      26-FEB-21           
+DEPT_DEL              TRIGGER        08-MAR-21           
+DEPT_INFO             PROCEDURE      26-FEB-21           
+EMPLOYEESALARY        PROCEDURE      02-FEB-21           
+F_DEPT_BONUS          FUNCTION       03-MAR-21           
+PKG_DEPT_EMP_INFO     PACKAGE        10-MAR-21           
+PKG_DEPT_EMP_INFO     PACKAGE BODY   10-MAR-21           
+SECURE_DML            PROCEDURE      05-JAN-21           
+SECURE_EMPLOYEES      TRIGGER        05-JAN-21           
+UPDATE_JOB_HISTORY    TRIGGER        05-JAN-21           
+
+
+PL/SQL procedure successfully completed.
+
+Q2)
+
+DECLARE
+    emp_id     employees.employee_id%TYPE := 152;  
+    emp_email  employees.email%TYPE := 'PHALL';
+	num_emp    integer := 0;
+
+  FUNCTION Emp_Sal 
+     ( Emp_ID IN employees.employee_id%TYPE)
+       RETURN integer
+      IS
+       ret    integer; 	
+  BEGIN
+    SELECT salary into ret
+    FROM  employees
+    WHERE employee_id = emp_id ;
+    
+    RETURN ret;
+  END Emp_Sal;
+
+  FUNCTION Emp_Sal  
+    (Emp_Email IN employees.email%TYPE)
+	RETURN integer
+    IS
+	ret    integer; 	
+  BEGIN
+    SELECT salary into ret
+    FROM   employees
+	WHERE email = emp_email;
+    RETURN ret ;
+  END Emp_Sal;
+
+BEGIN
+     DBMS_OUTPUT.PUT_LINE ('Call function with ID as parameter:');
+     num_emp := Emp_Sal (emp_id ) ;
+     DBMS_OUTPUT.PUT_LINE ('The employee salary in emp ID ' || 
+                emp_id || ' is: '|| num_emp ||'.');
+     DBMS_OUTPUT.PUT_LINE ('  ');
+     DBMS_OUTPUT.PUT_LINE ('Call function with email as parameter:');
+     num_emp := Emp_Sal (emp_email) ;
+     DBMS_OUTPUT.PUT_LINE ('The employee salary in email ' || 
+                emp_email || ' is: '|| num_emp ||'.');      
+END;
+/
+
+OUTPUT:
+
+Call function with ID as parameter:
+The employee salary in emp ID 152 is: 9000.
+  
+Call function with email as parameter:
+The employee salary in email PHALL is: 9000.
+
+
+PL/SQL procedure successfully completed.
+
+Q3)
+
+-- Program fails on the last update and I do not know how to resolve it.
+-- Value larger than specified precision which means (2,2) is too small for the input
+-- However when I did (38,2) it still failed.
+
+CREATE TABLE      Emp_Access_log(
+   OLD_SAL  	           number(8,2),
+   NEW_SAL	               number(8,2),
+   OLD_COMM                number(2,2),
+   NEW_COMM                number(2,2),
+   Updated_Date	           DATE,
+   Updated_By	           Varchar2 (15),
+   Action                  Varchar2 (30)
+);
+
+CREATE OR REPLACE TRIGGER Change_Emp
+   AFTER UPDATE OF salary, commission_pct ON employees
+   FOR EACH ROW
+   BEGIN
+      IF UPDATING('salary') THEN
+	  INSERT INTO Emp_Access_log VALUES
+         (:OLD.salary, :NEW.salary,:OLD.commission_pct,null,
+          Sysdate, user, 'Commission_pct is changed');
+
+     ELSIF UPDATING('commission_pct') THEN
+	 INSERT INTO Emp_Access_log VALUES
+         (:OLD.salary, :NEW.salary,:OLD.commission_pct,:NEW.commission_pct,
+          Sysdate, user, 'Commission_pct is changed');
+      ELSE	
+	 DBMS_OUTPUT.PUT_LINE('something goes wrong');
+      END IF;
+END Change_Emp ;
+/
+
+UPDATE employees set salary = salary *1.1 WHERE employee_id = 150;
+
+UPDATE employees set commission_pct = commission_pct * 2   
+           WHERE salary < 6500 and department_id = 80;
+		   
+OUTPUT:
+
+Table EMP_ACCESS_LOG created.
+
+
+Trigger CHANGE_EMP compiled
+
+
+1 row updated.
+
+
+Error starting at line : 33 in command -
+UPDATE employees set commission_pct = commission_pct * 2   
+           WHERE salary < 6500 and department_id = 80
+Error report -
+ORA-01438: value larger than specified precision allowed for this column
+
+
+
+Q4)
+
+CREATE OR REPLACE PACKAGE Pkg_Emp_Info AUTHID DEFINER IS
+
+   TYPE Emp_Info IS RECORD( 
+       empno	    employees.employee_id%TYPE,
+       full_name    varchar2(45),
+       sal          employees.salary%TYPE,
+       deptno       employees.department_id%TYPE
+     );
+     
+     FUNCTION Get_Emp_Info(
+     emp_id IN employees.employee_id%TYPE
+     )
+     RETURN Emp_Info;
+END Pkg_Emp_Info ;
+/
+
+CREATE OR REPLACE PACKAGE BODY Pkg_Emp_Info AS
+   FUNCTION Get_Emp_Info 
+    (emp_id IN employees.employee_id%TYPE)
+	RETURN Emp_Info
+    IS
+	v Emp_Info; 	
+   BEGIN
+     SELECT employee_id, first_name ||' '||last_name as full_name, salary, department_id into v
+     FROM   employees
+     WHERE employee_id = emp_id;
+    RETURN v ;
+  END Get_Emp_Info ;
+END Pkg_Emp_Info ;
+/
+
+
+DECLARE
+    dept_id    Pkg_Emp_Info.Emp_Info;  
+    Cursor c1 is 
+    Select Employee_id
+    from employees
+    where department_id = 60;
+ BEGIN
+        DBMS_OUTPUT.PUT_LINE( 'Call by employee ID for dept 60: ');
+        DBMS_OUTPUT.PUT_LINE( ' emp_ID      Full Name       Salary           dep_ID');
+        DBMS_OUTPUT.PUT_LINE(' -------     ------------    ------------  ------------');
+        FOR idx IN c1 LOOP
+           dept_id := Pkg_Emp_Info.Get_Emp_Info( idx.employee_id);
+           DBMS_OUTPUT.PUT_LINE (RPAD(TO_CHAR(dept_id.empno, '999999'),15)||  (dept_id.full_name) || 
+                                 TO_CHAR (dept_id.sal, '$99,999') || TO_CHAR(dept_id.deptno, '9999'));
+        END LOOP; 
+     END;
+/
+
+OUTPUT:
+
+
+Package PKG_EMP_INFO compiled
+
+
+Package Body PKG_EMP_INFO compiled
+
+Call by employee ID for dept 60: 
+ emp_ID      Full Name       Salary           dep_ID
+ -------     ------------    ------------  ------------
+    103        Alexander Hunold  $9,000   60
+    104        Bruce Ernst  $6,000   60
+    105        David Austin  $4,800   60
+    106        Valli Pataballa  $4,800   60
+    107        Diana Lorentz  $4,200   60
+
+
+PL/SQL procedure successfully completed.
+
+Q5)
+
+CREATE OR REPLACE FUNCTION Get_Tab_Size(
+tab_name IN varchar2
+)
+return Integer
+IS
+query_string varchar2 (2000):= 'select count (*) FROM ' || tab_name;
+tot_number integer;
+BEGIN
+EXECUTE IMMEDIATE query_string into tot_number;
+return tot_number;
+end;
+/
+
+DECLARE
+tab_check varchar2(30) := 'EMPLOYEES';
+BEGIN
+DBMS_OUTPUT.PUT_LINE(Get_Tab_Size(tab_check));
+END;
+
+OUTPUT:
+
+Function GET_TAB_SIZE compiled
+
+107
+
+
+PL/SQL procedure successfully completed.
+
+
+
+
+
+
+
+
